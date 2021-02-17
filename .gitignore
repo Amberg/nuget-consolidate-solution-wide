@@ -1,3 +1,6 @@
 /src/.vs
 /src/*/obj
 /src/*/bin
+.nuget
+.tmp
+/artifacts
