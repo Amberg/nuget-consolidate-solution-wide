@@ -7,9 +7,11 @@
 		<PackageOutputPath>..\..\.nuget</PackageOutputPath>
 	</PropertyGroup>
 	<ItemGroup>
+	  <PackageReference Include="CommandLineParser" Version="2.8.0" />
 	  <PackageReference Include="GitVersionTask" Version="5.5.1">
 	    <PrivateAssets>all</PrivateAssets>
 	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 	  </PackageReference>
+	  <PackageReference Include="NuGet.ProjectModel" Version="5.8.1" />
 	</ItemGroup>
 </Project>

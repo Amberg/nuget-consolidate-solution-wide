@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "NugetConsolidate": {
+      "commandName": "Project",
+      "commandLineArgs": "-v -s C:\\WORK\\flightpro\\src\\FlightPro.sln -m \"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\MSBuild\\Current\\Bin\\msbuild.exe\""
+    }
+  }
+}
