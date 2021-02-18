@@ -1,1 +1,1 @@
-dotnet build src/NugetConsolidate.sln
+dotnet pack src/NugetConsolidate.sln
