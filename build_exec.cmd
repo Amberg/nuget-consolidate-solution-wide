@@ -1,2 +1,2 @@
 cd src
-dotnet test && dotnet pack -c Release /p:ContinuousIntegrationBuild=true
+dotnet test && dotnet pack

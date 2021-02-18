@@ -1,0 +1,53 @@
+<Project>
+
+  <!-- Common properties for all projects -->
+  <PropertyGroup>
+    <Company>Leica Geosystems AG</Company>
+    <Authors>Leica Geosystems AG</Authors>
+    <Copyright>Copyright (C) 2014-$([System.DateTime]::Now.ToString(yyyy)) Leica Geosystems AG</Copyright>    
+    <!-- Versions when building inside VS -->
+    <AssemblyVersion>0.0.0.0</AssemblyVersion>
+    <FileVersion>0.0.0.0</FileVersion>
+    <InformationalVersion>0.0.0.0-localbuild</InformationalVersion>
+    <Version>0.0.0.0-localbuild</Version>
+  </PropertyGroup>
+
+  <!-- Compilation constants -->
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);TRACE;CODE_ANALYSIS</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Custom analyzer rulesets for specific projects -->
+  <PropertyGroup>
+    <CodeAnalysisRulesetLevel Condition="$(MSBuildProjectName.EndsWith('UnitTest'))">Small</CodeAnalysisRulesetLevel>
+    <CodeAnalysisRulesetLevel Condition="$(MSBuildProjectName.EndsWith('IntegrationTest'))">Small</CodeAnalysisRulesetLevel>
+  </PropertyGroup>
+
+  <!-- Mandatory NuGet package references for each project -->
+  <ItemGroup>
+    <PackageReference Include="LeicaGeosystemsAG.Airborne.Git.Hooks" Version="0.7.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="LeicaGeosystemsAG.Airborne.DotNet.Analyzers.Rulesets" Version="3.3.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Required references for any .NET core test project (Test framework can be choosen on assembly level) -->
+  <ItemGroup Condition="($(MSBuildProjectName.EndsWith('.UnitTest')) OR $(MSBuildProjectName.EndsWith('.IntegrationTest'))) AND $(TargetFramework.StartsWith('netcore'))">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.8.3" />
+    <PackageReference Include="TeamCity.VSTest.TestAdapter" Version="1.0.23" />
+  </ItemGroup>
+
+  <!-- Add PDBs and source link support to NuGet packages -->
+  <ItemGroup>
+    <PackageReference Include="SourceLink.Copy.PdbFiles" Version="2.8.3" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
+  </ItemGroup>
+
+</Project>
