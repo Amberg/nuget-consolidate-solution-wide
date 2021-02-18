@@ -36,8 +36,7 @@ namespace NugetConsolidate.Service
 
 		private void ProcessLockFile((LockFile lockFile, PackageSpec project) job)
 		{
-			Stack<string> dependencyChain = new Stack<string>();
-			dependencyChain.Push(job.project.Name);
+			Stack<LockFileTargetLibrary> dependencyChain = new Stack<LockFileTargetLibrary>();
 			ColorConsole.WriteLine($"Process - {job.project.Name}");
 			foreach (var targetFramework in job.project.TargetFrameworks)
 			{
@@ -47,7 +46,7 @@ namespace NugetConsolidate.Service
 					foreach (var dependency in targetFramework.Dependencies)
 					{
 						var projectLibrary = lockFileTargetFramework.Libraries.FirstOrDefault(library => library.Name == dependency.Name);
-						ReportDependency(projectLibrary, lockFileTargetFramework, dependencyChain);
+						ReportDependency(projectLibrary, lockFileTargetFramework, dependencyChain, job.project);
 					}
 				}
 			}
@@ -59,16 +58,17 @@ namespace NugetConsolidate.Service
 			return (m_lockFileService.GetLockFile(project.FilePath, project.RestoreMetadata.OutputPath), project);
 		}
 
-		private void ReportDependency(LockFileTargetLibrary projectLibrary, LockFileTarget lockFileTargetFramework, Stack<string> depChain)
+		private void ReportDependency(LockFileTargetLibrary projectLibrary, LockFileTarget lockFileTargetFramework,
+			Stack<LockFileTargetLibrary> depChain, PackageSpec project)
 		{
-			depChain.Push($"{projectLibrary.Name}-{projectLibrary.Version}");
-			m_dependencyGraph.AddDependency(projectLibrary, depChain);
+			depChain.Push(projectLibrary);
+			m_dependencyGraph.AddDependency(projectLibrary, depChain, project);
 			foreach (var childDependency in projectLibrary.Dependencies)
 			{
 				var childLibrary = lockFileTargetFramework.Libraries.FirstOrDefault(library => library.Name == childDependency.Id);
 				if (childLibrary != null)
 				{
-					ReportDependency(childLibrary, lockFileTargetFramework, depChain);
+					ReportDependency(childLibrary, lockFileTargetFramework, depChain, project);
 				}
 				else
 				{

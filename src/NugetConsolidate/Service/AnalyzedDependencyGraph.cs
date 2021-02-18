@@ -17,19 +17,20 @@ namespace NugetConsolidate.Service
 			m_assemblyLookup = new Dictionary<string, NugetDependency>();
 		}
 
-		public void AddDependency(LockFileTargetLibrary projectLibrary, Stack<string> depChain)
+		public void AddDependency(LockFileTargetLibrary projectLibrary, Stack<LockFileTargetLibrary> depChain, PackageSpec project)
 		{
 			if (!m_assemblyLookup.TryGetValue(projectLibrary.Name, out var nugetDependency))
 			{
 				nugetDependency = new NugetDependency(projectLibrary.Name);
 				m_assemblyLookup[projectLibrary.Name] = nugetDependency;
 			}
-			nugetDependency.AddOccurrence(projectLibrary.Version, depChain.Reverse().ToList());
+			nugetDependency.AddOccurrence(projectLibrary.Version, depChain.Reverse().ToList(), project);
 		}
 
-		public void LogSummary()
+		public IEnumerable<RequiredNugetUpdate> IdentifyRequiredNugetUpdates()
 		{
-			ColorConsole.WriteInfo($"{m_assemblyLookup.Count} dependencies found in {m_dependencyGraphSpec.Projects.Count} projects");
+			ColorConsole.WriteInfo(
+				$"{m_assemblyLookup.Count} dependencies found in {m_dependencyGraphSpec.Projects.Count} projects");
 			if (m_assemblyLookup.Any(a => a.Value.OccurrenceList.Count > 1))
 			{
 				ColorConsole.WriteWrappedHeader("duplicate dependency found", headerColor: ConsoleColor.Red);
@@ -57,13 +58,24 @@ namespace NugetConsolidate.Service
 								}
 								else
 								{
-									ColorConsole.WriteEmbeddedColorLine($"\t\t\t{duplicateVersions.Key} transitive reference({directReferencedNugets.MaxLvl}) of [Yellow]{directReferencedNugets.DirectAssembly}[/Yellow]");
+									ColorConsole.WriteEmbeddedColorLine(
+										$"\t\t\t{duplicateVersions.Key} transitive reference({directReferencedNugets.MaxLvl})" +
+										$" of [Yellow]{directReferencedNugets.DirectAssembly.Name}-{directReferencedNugets.DirectAssembly.Version}[/Yellow]");
 								}
 							}
 						}
 					}
 				}
 			}
+
+			var duplicates = m_assemblyLookup.Where(a => a.Value.OccurrenceList.Count > 1).ToList();
+			var maxVersionLookup = duplicates.ToDictionary(x => x.Key, x => x.Value.OccurrenceList.Keys.Max());
+
+			var updateRequired = duplicates.SelectMany(kvp =>
+				kvp.Value.OccurrenceList.Where(x => x.Key < maxVersionLookup[kvp.Key]).SelectMany(x => x.Value)).ToList();
+
+			return updateRequired.Select(x =>
+				new RequiredNugetUpdate(x.ProjectPath, x.Target, maxVersionLookup[x.Target.Name], x.Lvl == 0));
 		}
 
 		private class NugetDependency
@@ -81,30 +93,37 @@ namespace NugetConsolidate.Service
 				get;
 			}
 
-			public void AddOccurrence(NuGetVersion version, List<string> depChain)
+			public void AddOccurrence(NuGetVersion version, List<LockFileTargetLibrary> depChain, PackageSpec project)
 			{
 				if (!OccurrenceList.TryGetValue(version, out var rootList))
 				{
 					rootList = new List<DependencyOccurrence>();
 					OccurrenceList[version] = rootList;
 				}
-				rootList.Add(new DependencyOccurrence(depChain));
+				rootList.Add(new DependencyOccurrence(depChain, project));
 			}
 		}
 
 		private class DependencyOccurrence
 		{
-			private readonly List<string> m_depChain;
+			private readonly List<LockFileTargetLibrary> m_depChain;
+			private readonly PackageSpec m_project;
 
-			public DependencyOccurrence(List<string> depChain)
+			public DependencyOccurrence(List<LockFileTargetLibrary> depChain, PackageSpec project)
 			{
 				m_depChain = depChain;
+				m_project = project;
 			}
-			public int Lvl => m_depChain.Count - 2;
 
-			public string Root => m_depChain[0];
+			public string ProjectPath => m_project.FilePath;
 
-			public string DirectReference => m_depChain[1];
+			public int Lvl => m_depChain.Count - 1;
+
+			public string Root => m_project.Name;
+
+			public LockFileTargetLibrary Target => m_depChain.Last();
+
+			public LockFileTargetLibrary DirectReference => m_depChain[0];
 		}
 	}
 }
