@@ -7,13 +7,14 @@ namespace NugetConsolidate.Service
 	{
 		public LockFile GetLockFile(string projectPath, string outputPath)
 		{
-			// Run the restore command
-			var dotNetRunner = new ProcessRunner();
-			string[] arguments = new[] { "restore", $"\"{projectPath}\"" };
-			var runStatus = dotNetRunner.Run("dotnet", Path.GetDirectoryName(projectPath), arguments);
-
-			// Load the lock file
 			string lockFilePath = Path.Combine(outputPath, "project.assets.json");
+			if (!File.Exists(lockFilePath))
+			{
+				// Run the restore command
+				var dotNetRunner = new ProcessRunner();
+				string[] arguments = new[] { "restore", $"\"{projectPath}\"" };
+				var runStatus = dotNetRunner.Run("dotnet", Path.GetDirectoryName(projectPath), arguments);
+			}
 			return LockFileUtilities.GetLockFile(lockFilePath, NuGet.Common.NullLogger.Instance);
 		}
     }

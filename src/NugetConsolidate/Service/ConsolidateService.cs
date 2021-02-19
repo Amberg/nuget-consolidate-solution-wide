@@ -24,6 +24,8 @@ namespace NugetConsolidate.Service
 
 		public int ConsolidateTransitiveDependencies(bool checkOnly)
 		{
+			RestoreSolution();
+
 			ColorConsole.WriteInfo($"Generate dependency graph for {m_options.SolutionFile} please wait....");
 			var graphSpec = m_dependencyGraphReader.GenerateDependencyGraph(m_options.SolutionFile, m_options.MsBuildPath);
 			var graph = m_dependencyGraphAnalyzer.AnalyzeDependencyGraph(graphSpec);
@@ -54,6 +56,17 @@ namespace NugetConsolidate.Service
 				ColorConsole.WriteInfo("all packages are referenced with the same version");
 			}
 			return result; // success
+		}
+
+		private void RestoreSolution()
+		{
+			var runner = new ProcessRunner();
+			ColorConsole.WriteInfo($"Restore {m_options.SolutionFile}");
+			var result = runner.Run("dotnet", null, new[] { "restore", m_options.SolutionFile });
+			if (!result.IsSuccess)
+			{
+				ColorConsole.WriteError($"restoring failed {result.Errors} ");
+			}
 		}
 
 		private void UpdatePackageReferences(IReadOnlyCollection<RequiredNugetUpdate> requiredNugetUpdates)
