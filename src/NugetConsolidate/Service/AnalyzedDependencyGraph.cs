@@ -75,7 +75,8 @@ namespace NugetConsolidate.Service
 				kvp.Value.OccurrenceList.Where(x => x.Key < maxVersionLookup[kvp.Key]).SelectMany(x => x.Value)).ToList();
 
 			return updateRequired.Select(x =>
-				new RequiredNugetUpdate(x.ProjectPath, x.Target, maxVersionLookup[x.Target.Name], x.Lvl == 0));
+				new RequiredNugetUpdate(x.ProjectPath, x.Target, maxVersionLookup[x.Target.Name], x.Lvl == 0, x.DirectReference.Name))
+				.Distinct();
 		}
 
 		private class NugetDependency

@@ -13,7 +13,10 @@ namespace NugetConsolidate
 
 		private static void Run(CommandLineOptions options)
 		{
-			var consolidateService = new ConsolidateService(options, new DependencyGraphService(), new DependencyGraphAnalyzer(new LockFileService()));
+			var consolidateService = new ConsolidateService(options,
+				new DependencyGraphReader(),
+				new DependencyGraphAnalyzer(new LockFileService()),
+				new PackageReferenceUpdater());
 			consolidateService.ConsolidateTransitiveDependencies();
 		}
 	}

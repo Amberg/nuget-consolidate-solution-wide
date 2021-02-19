@@ -4,7 +4,7 @@ using NuGet.ProjectModel;
 
 namespace NugetConsolidate.Service
 {
-	internal class DependencyGraphService : IDependencyGraphService
+	internal class DependencyGraphReader : IDependencyGraphReader
 	{
 		public DependencyGraphSpec GenerateDependencyGraph(string projectPath, string pathToMsBuild)
 		{

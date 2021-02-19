@@ -2,7 +2,7 @@
 
 namespace NugetConsolidate.Service
 {
-	internal interface IDependencyGraphService
+	internal interface IDependencyGraphReader
 	{
 		DependencyGraphSpec GenerateDependencyGraph(string projectPath, string pathToMsBuild);
 	}
