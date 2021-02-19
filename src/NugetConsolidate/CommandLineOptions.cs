@@ -32,5 +32,7 @@ namespace NugetConsolidate
 	[Verb("fix", HelpText = "References packages always with the same version")]
 	internal class CommandLineOptionsFix : CommandLineOptions
 	{
+		[Option('c', "clean", Required = false, HelpText = "Recreates generated package includes (remove not used references)")]
+		public bool Clean { get; set; }
 	}
 }

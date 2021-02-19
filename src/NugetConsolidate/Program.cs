@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using CommandLine;
 using NugetConsolidate.Service;
@@ -26,6 +27,21 @@ namespace NugetConsolidate
 		private static int Fix(CommandLineOptionsFix options)
 		{
 			var consolidateService = CreateConsolidateService(options);
+			if (options.Clean)
+			{
+				var filesToDelete = Directory.EnumerateFiles(Path.GetDirectoryName(options.SolutionFile),
+					PackageReferenceUpdater.PROJECT_FILE_PROPS_FILE_NAME, SearchOption.AllDirectories).ToList();
+				ColorConsole.WriteInfo($"Started with clean flag. Deleting {PackageReferenceUpdater.PROJECT_FILE_PROPS_FILE_NAME} files");
+				foreach (var file in Directory.EnumerateFiles(Path.GetDirectoryName(options.SolutionFile), PackageReferenceUpdater.PROJECT_FILE_PROPS_FILE_NAME, SearchOption.AllDirectories))
+				{
+					if (options.Verbose)
+					{
+						Console.WriteLine($"Delete {file}");
+					}
+					File.Delete(file);
+				}
+				ColorConsole.WriteInfo($"{filesToDelete.Count} files deleted");
+			}
 			return consolidateService.ConsolidateTransitiveDependencies(false);
 		}
 
