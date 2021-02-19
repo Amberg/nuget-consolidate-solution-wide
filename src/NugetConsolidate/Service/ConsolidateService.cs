@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Xml.Linq;
 
 namespace NugetConsolidate.Service
 {
@@ -24,13 +22,38 @@ namespace NugetConsolidate.Service
 			m_packageReferenceUpdater = packageReferenceUpdater;
 		}
 
-		public void ConsolidateTransitiveDependencies()
+		public int ConsolidateTransitiveDependencies(bool checkOnly)
 		{
-			ColorConsole.WriteInfo($"Generate dependency graph for {m_options.SolutionFile}");
+			ColorConsole.WriteInfo($"Generate dependency graph for {m_options.SolutionFile} please wait....");
 			var graphSpec = m_dependencyGraphReader.GenerateDependencyGraph(m_options.SolutionFile, m_options.MsBuildPath);
 			var graph = m_dependencyGraphAnalyzer.AnalyzeDependencyGraph(graphSpec);
-			var requiredUpdates = graph.IdentifyRequiredNugetUpdates();
-			UpdatePackageReferences(requiredUpdates.ToList());
+			var requiredUpdates = graph.IdentifyRequiredNugetUpdates(m_options.Verbose).ToList();
+			int result = 0; // success
+
+			if (requiredUpdates.Any())
+			{
+				if (checkOnly)
+				{
+					var packages = requiredUpdates.GroupBy(x => x.Library.Name).ToList();
+					ColorConsole.WriteWarning($"{packages.Count} packages are referenced with different versions:");
+					foreach (var package in packages)
+					{
+						var firstOccurrence = package.First();
+						ColorConsole.WriteWarning($"Upgrade of {firstOccurrence.Library.Name} to version {firstOccurrence.TargetVersion} required in {package.Count()} projects");
+					}
+					ColorConsole.WriteWarning("run this command again with the fix option to fix this");
+					result = requiredUpdates.Count;
+				}
+				else
+				{
+					UpdatePackageReferences(requiredUpdates);
+				}
+			}
+			else
+			{
+				ColorConsole.WriteInfo("all packages are referenced with the same version");
+			}
+			return result; // success
 		}
 
 		private void UpdatePackageReferences(IReadOnlyCollection<RequiredNugetUpdate> requiredNugetUpdates)
@@ -44,7 +67,7 @@ namespace NugetConsolidate.Service
 			foreach (var directUpdate in requiredNugetUpdates
 				.GroupBy(x => x.Library.Name))
 			{
-				ColorConsole.WriteWrappedHeader($"Update {directUpdate.Key} to {directUpdate.Max(x => x.TargetVersion)}", headerColor: ConsoleColor.Green);
+				ColorConsole.WriteWrappedHeader($"Update {directUpdate.Key} to {directUpdate.Max(x => x.TargetVersion)} used in {directUpdate.First().UpateCausedBy}", headerColor: ConsoleColor.Green);
 				foreach (var update in directUpdate.Where(x => x.DirectReference))
 				{
 					m_packageReferenceUpdater.UpdateDirectPackageReference(update);

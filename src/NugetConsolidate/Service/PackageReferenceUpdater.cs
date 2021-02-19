@@ -12,7 +12,8 @@ namespace NugetConsolidate.Service
 
 		public void UpdateDirectPackageReference(RequiredNugetUpdate update)
 		{
-			ColorConsole.WriteEmbeddedColorLine($"Update {update.Library.Name}\t\t from [red]{update.Library.Version}[/red] to [green]{update.TargetVersion}[/green] [green](Direct)[/green] in\t\t{Path.GetFileName(update.ProjectPath)}");
+			ColorConsole.WriteEmbeddedColorLine($"Update {update.Library.Name}\t\t from [red]{update.Library.Version}[/red] to" +
+			                                    $" [green]{update.TargetVersion}[/green] [green](Direct)[/green] in\t\t{Path.GetFileName(update.ProjectPath)}");
 			var doc = XDocument.Load(update.ProjectPath);
 			var element = doc.Root?
 				.Descendants("PackageReference")
@@ -40,7 +41,8 @@ namespace NugetConsolidate.Service
 
 		public void UpdatePackageReferenceFromTransitiveDependency(RequiredNugetUpdate update, string solutionFolder)
 		{
-			ColorConsole.WriteEmbeddedColorLine($"Update {update.Library.Name}\t\t from [red]{update.Library.Version}[/red] to [green]{update.TargetVersion}[/green] [yellow](Transitive)[/yellow] for\t\t{Path.GetFileName(update.ProjectPath)}");
+			ColorConsole.WriteEmbeddedColorLine($"Update {update.Library.Name}\t\t from [red]{update.Library.Version}[/red]" +
+			                                    $" to [green]{update.TargetVersion}[/green] [yellow](Transitive)[/yellow] in\t\t{Path.GetFileName(update.ProjectPath)}");
 
 			var projectName = Path.GetFileName(update.ProjectPath);
 			var projectFolder = Path.GetDirectoryName(update.ProjectPath);
@@ -54,7 +56,8 @@ namespace NugetConsolidate.Service
 			var itemGroup = document.Root?.Descendants("ItemGroup").FirstOrDefault();
 			if (itemGroup != null)
 			{
-				itemGroup.Add(new XComment($"Required to update transitive reference of {update.RootReferenceName} in {projectName}"),
+				itemGroup.Add(new XComment($"Required to update transitive reference of {update.RootReferenceName}\r\nin {projectName} \r\n" +
+				                           $"from {update.Library.Version} because {update.TargetVersion} is used in {update.UpateCausedBy}"),
 					new XElement("PackageReference", new XAttribute("Include", update.Library.Name), new XAttribute("Version", update.TargetVersion.ToString())));
 				using XmlWriter w = XmlWriter.Create(packageReferenceFile, new XmlWriterSettings() { OmitXmlDeclaration = true, Indent = true });
 				document.Save(w);

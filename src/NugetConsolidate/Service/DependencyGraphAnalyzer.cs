@@ -37,7 +37,6 @@ namespace NugetConsolidate.Service
 		private void ProcessLockFile((LockFile lockFile, PackageSpec project) job)
 		{
 			Stack<LockFileTargetLibrary> dependencyChain = new Stack<LockFileTargetLibrary>();
-			ColorConsole.WriteLine($"Process - {job.project.Name}");
 			foreach (var targetFramework in job.project.TargetFrameworks)
 			{
 				var lockFileTargetFramework = job.lockFile.Targets.FirstOrDefault(t => t.TargetFramework.Equals(targetFramework.FrameworkName));
@@ -54,7 +53,6 @@ namespace NugetConsolidate.Service
 
 		private (LockFile, PackageSpec) GetLockFile(PackageSpec project)
 		{
-			ColorConsole.WriteLine($"Get lockfile for project: {project.Name}");
 			return (m_lockFileService.GetLockFile(project.FilePath, project.RestoreMetadata.OutputPath), project);
 		}
 

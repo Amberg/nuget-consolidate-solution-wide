@@ -27,56 +27,90 @@ namespace NugetConsolidate.Service
 			nugetDependency.AddOccurrence(projectLibrary.Version, depChain.Reverse().ToList(), project);
 		}
 
-		public IEnumerable<RequiredNugetUpdate> IdentifyRequiredNugetUpdates()
+		public IEnumerable<RequiredNugetUpdate> IdentifyRequiredNugetUpdates(bool verbose)
 		{
-			ColorConsole.WriteInfo(
-				$"{m_assemblyLookup.Count} dependencies found in {m_dependencyGraphSpec.Projects.Count} projects");
-			if (m_assemblyLookup.Any(a => a.Value.OccurrenceList.Count > 1))
+			if (verbose)
 			{
-				ColorConsole.WriteWrappedHeader("duplicate dependency found", headerColor: ConsoleColor.Red);
-				foreach (var duplicateVersions in m_assemblyLookup.Where(a => a.Value.OccurrenceList.Count > 1))
+				if (m_assemblyLookup.Any(a => a.Value.OccurrenceList.Count > 1))
 				{
-					ColorConsole.WriteLine($"Duplicate dependency: {duplicateVersions.Key}", ConsoleColor.Red);
-					foreach (var occurrences in duplicateVersions.Value.OccurrenceList)
+					foreach (var duplicateVersions in m_assemblyLookup.Where(a => a.Value.OccurrenceList.Count > 1))
 					{
-						ColorConsole.WriteLine($"\t{occurrences.Key}: used in", ConsoleColor.Green);
-						foreach (var projectAndOccurrence in occurrences.Value.GroupBy(x => x.Root))
+						ColorConsole.WriteLine($"Duplicate dependency: {duplicateVersions.Key}", ConsoleColor.Red);
+						foreach (var occurrences in duplicateVersions.Value.OccurrenceList)
 						{
-							ColorConsole.WriteLine($"\t\t{projectAndOccurrence.Key}:");
-							foreach (var directReferencedNugets in projectAndOccurrence
-								.GroupBy(x => x.DirectReference)
-								.Select(x => new
-								{
-									MaxLvl = x.Max(v => v.Lvl),
-									DirectAssembly = x.Key
-								})
-								.OrderBy(x => x.MaxLvl))
+							ColorConsole.WriteLine($"\t{occurrences.Key}: used in", ConsoleColor.Green);
+							foreach (var projectAndOccurrence in occurrences.Value.GroupBy(x => x.Root))
 							{
-								if (directReferencedNugets.MaxLvl == 0)
+								ColorConsole.WriteLine($"\t\t{projectAndOccurrence.Key}:");
+								foreach (var directReferencedNugets in projectAndOccurrence
+									.GroupBy(x => x.DirectReference)
+									.Select(x => new
+									{
+										MaxLvl = x.Max(v => v.Lvl),
+										DirectAssembly = x.Key
+									})
+									.OrderBy(x => x.MaxLvl))
 								{
-									ColorConsole.WriteLine("\t\t\tdirect reference", ConsoleColor.Green);
-								}
-								else
-								{
-									ColorConsole.WriteEmbeddedColorLine(
-										$"\t\t\t{duplicateVersions.Key} transitive reference({directReferencedNugets.MaxLvl})" +
-										$" of [Yellow]{directReferencedNugets.DirectAssembly.Name}-{directReferencedNugets.DirectAssembly.Version}[/Yellow]");
+									if (directReferencedNugets.MaxLvl == 0)
+									{
+										ColorConsole.WriteLine("\t\t\tdirect reference", ConsoleColor.Green);
+									}
+									else
+									{
+										ColorConsole.WriteEmbeddedColorLine(
+											$"\t\t\t{duplicateVersions.Key} transitive reference({directReferencedNugets.MaxLvl})" +
+											$" of [Yellow]{directReferencedNugets.DirectAssembly.Name}-{directReferencedNugets.DirectAssembly.Version}[/Yellow]");
+									}
 								}
 							}
 						}
 					}
 				}
 			}
-
+			ColorConsole.WriteInfo($"{m_assemblyLookup.Count} dependencies found in {m_dependencyGraphSpec.Projects.Count} projects");
 			var duplicates = m_assemblyLookup.Where(a => a.Value.OccurrenceList.Count > 1).ToList();
 			var maxVersionLookup = duplicates.ToDictionary(x => x.Key, x => x.Value.OccurrenceList.Keys.Max());
+			var projectWithMaxVersion = duplicates.ToDictionary(x => x.Key, x => x.Value.ProjectWithMaxVersion);
 
 			var updateRequired = duplicates.SelectMany(kvp =>
 				kvp.Value.OccurrenceList.Where(x => x.Key < maxVersionLookup[kvp.Key]).SelectMany(x => x.Value)).ToList();
 
 			return updateRequired.Select(x =>
-				new RequiredNugetUpdate(x.ProjectPath, x.Target, maxVersionLookup[x.Target.Name], x.Lvl == 0, x.DirectReference.Name))
-				.Distinct();
+				new RequiredNugetUpdate(x.ProjectPath, x.Target, maxVersionLookup[x.Target.Name], x.Lvl == 0, x.DirectReference.Name, projectWithMaxVersion[x.Target.Name]))
+				.Distinct(new RequiredNugetUpdateEqualityComparer());
+		}
+
+		private class RequiredNugetUpdateEqualityComparer : IEqualityComparer<RequiredNugetUpdate>
+		{
+			public bool Equals(RequiredNugetUpdate x, RequiredNugetUpdate y)
+			{
+				if (ReferenceEquals(x, y))
+				{
+					return true;
+				}
+
+				if (ReferenceEquals(x, null))
+				{
+					return false;
+				}
+
+				if (ReferenceEquals(y, null))
+				{
+					return false;
+				}
+
+				if (x.GetType() != y.GetType())
+				{
+					return false;
+				}
+
+				return x.ProjectPath == y.ProjectPath && x.DirectReference == y.DirectReference && x.Library.Equals(y.Library) && x.TargetVersion.Equals(y.TargetVersion);
+			}
+
+			public int GetHashCode(RequiredNugetUpdate obj)
+			{
+				return HashCode.Combine(obj.ProjectPath, obj.DirectReference, obj.Library, obj.TargetVersion);
+			}
 		}
 
 		private class NugetDependency
@@ -89,7 +123,29 @@ namespace NugetConsolidate.Service
 
 			public Dictionary<NuGetVersion, List<DependencyOccurrence>> OccurrenceList { get; }
 
-			public string Name
+			public string ProjectWithMaxVersion
+			{
+				get
+				{
+					var occurrencesWithMaxVersion = OccurrenceList
+						.OrderByDescending(x => x.Key) // order by version
+						.First().Value
+						.OrderBy(oc => oc.Lvl).ToList();
+					var shownOccurrence = occurrencesWithMaxVersion.First();
+					var result = shownOccurrence.Root;
+					if (shownOccurrence.Lvl > 0)
+					{
+						result += $" (ref by {shownOccurrence.DirectReference.Name})";
+					}
+					if (occurrencesWithMaxVersion.Count > 1)
+					{
+						result += $" and {occurrencesWithMaxVersion.Count - 1} other projects";
+					}
+					return result;
+				}
+			}
+
+			private string Name
 			{
 				get;
 			}

@@ -7,17 +7,32 @@ namespace NugetConsolidate
 	{
 		public static void Main(string[] args)
 		{
-			Parser.Default.ParseArguments<CommandLineOptions>(args)
-				.WithParsed<CommandLineOptions>(Run);
+			Parser.Default.ParseArguments<CommandLineOptionsCheck, CommandLineOptionsFix>(args)
+				.MapResult(
+					(CommandLineOptionsCheck options) => Check(options),
+					(CommandLineOptionsFix options) => Fix(options),
+					errors => 1);
 		}
 
-		private static void Run(CommandLineOptions options)
+		private static int Check(CommandLineOptionsCheck options)
+		{
+			var consolidateService = CreateConsolidateService(options);
+			return consolidateService.ConsolidateTransitiveDependencies(true);
+		}
+
+		private static int Fix(CommandLineOptionsFix options)
+		{
+			var consolidateService = CreateConsolidateService(options);
+			return consolidateService.ConsolidateTransitiveDependencies(false);
+		}
+
+		private static ConsolidateService CreateConsolidateService(CommandLineOptions options)
 		{
 			var consolidateService = new ConsolidateService(options,
 				new DependencyGraphReader(),
 				new DependencyGraphAnalyzer(new LockFileService()),
 				new PackageReferenceUpdater());
-			consolidateService.ConsolidateTransitiveDependencies();
+			return consolidateService;
 		}
 	}
 }
