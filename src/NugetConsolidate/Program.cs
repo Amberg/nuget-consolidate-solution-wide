@@ -1,4 +1,7 @@
-﻿using CommandLine;
+﻿using System;
+using System.IO;
+using System.Runtime.CompilerServices;
+using CommandLine;
 using NugetConsolidate.Service;
 
 namespace NugetConsolidate
@@ -28,6 +31,24 @@ namespace NugetConsolidate
 
 		private static ConsolidateService CreateConsolidateService(CommandLineOptions options)
 		{
+			if (!File.Exists(options.MsBuildPath))
+			{
+				var runner = new ProcessRunner();
+				var result = runner.Run(Environment.ExpandEnvironmentVariables(@"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"),
+					null,
+					new[] { @"-latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe" });
+				if (result.IsSuccess)
+				{
+					options.MsBuildPath = result.Output;
+					ColorConsole.WriteInfo($"MS build found at {options.MsBuildPath}");
+				}
+				else
+				{
+					ColorConsole.WriteError($"MS build not found {result.Errors}");
+					ColorConsole.WriteError($"specify msbuild path manually with -m flag");
+				}
+			}
+
 			var consolidateService = new ConsolidateService(options,
 				new DependencyGraphReader(),
 				new DependencyGraphAnalyzer(new LockFileService()),

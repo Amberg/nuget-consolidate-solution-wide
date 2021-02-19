@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -38,6 +39,10 @@ namespace NugetConsolidate.Service
 
 				Task.WaitAll(outputTask, errorTask);
 				return new RunStatus(output.ToString(), errors.ToString(), p.ExitCode);
+			}
+			catch (Win32Exception e)
+			{
+				return new RunStatus(e.Message, e.ToString(), e.NativeErrorCode);
 			}
 			finally
 			{

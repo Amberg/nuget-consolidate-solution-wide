@@ -10,7 +10,7 @@ namespace NugetConsolidate
 		[Option('s', "sln", Required = true, HelpText = "Path to solution file")]
 		public string SolutionFile { get; set; }
 
-		[Option('m', "msbuild", Required = true, HelpText = "Path to msbuild")]
+		[Option('m', "msbuild", Required = false, Default = null, HelpText = "Path to msbuild if automatic detection fails")]
 		public string MsBuildPath { get; set; }
 
 		[Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
